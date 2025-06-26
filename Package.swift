@@ -19,6 +19,10 @@ let package = Package(
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "SwiftImageCompressor"),
-
+        .testTarget(
+            name: "SwiftImageCompressorTests",
+            dependencies: ["SwiftImageCompressor"],
+            path: "Tests/SwiftImageCompressorTests"
+        )
     ]
 )
