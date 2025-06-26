@@ -24,7 +24,7 @@ Supports JPEG and PNG formats, with both synchronous and asynchronous APIs.
 Add this to your `Package.swift` dependencies:
 
 ```swift
-.package(url: "https://github.com/your-username/SwiftImageCompressor.git", from: "1.0.0")
+.package(url: "https://github.com/your-username/SwiftImageCompressor.git", from: "0.0.2")
 ```
 
 Then include it in your target dependencies:
