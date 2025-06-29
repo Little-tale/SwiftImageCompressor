@@ -208,15 +208,12 @@ extension SwiftImageCompressor {
                 let sizeMB = calcMBSize(of: data)
                 // ex) 150mb > 100mb
                 if sizeMB > mbSize {
-                    print("Not !!!")
                     high = mid
                 } else {
                     bestData = data
-                    print("BEST !!!")
                     low = mid
                 }
             }
-            print("결말")
         }
         
         return bestData
