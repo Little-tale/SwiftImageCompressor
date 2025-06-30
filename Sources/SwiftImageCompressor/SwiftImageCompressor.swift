@@ -35,7 +35,6 @@ public final class SwiftImageCompressor: Sendable {
         }
     }
     
-    
     /// Resize and Compress to target MB
     /// - Parameters:
     ///   - image: UIImage to compress
@@ -82,17 +81,71 @@ public final class SwiftImageCompressor: Sendable {
         targetMB: Double,
         maxDimension: CGFloat = 2048
     ) async -> Data? {
-        await Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self else { return nil }
-            let resized = downSample(image, maxDimension: maxDimension)
+        if Task.isCancelled {
+            return nil
+        }
+        let resized = downSample(image, maxDimension: maxDimension)
+        
+        switch type {
+        case .jpeg:
+            return compressionJPEGEngine(from: resized, mbSize: targetMB)
+        case .png:
+            return compressionPNGEngine(from: resized, mbSize: targetMB)
+        }
+    }
+    
+    /// Compress the given image directly without resizing, targeting a specified file size in MB.
+    /// This function keeps the original image dimensions but compresses it to meet the desired size.
+    /// - Parameters:
+    ///   - image: The `UIImage` to compress.
+    ///   - type: The desired image format (`jpeg` or `png`).
+    ///   - targetMB: The maximum allowed file size in megabytes.
+    /// - Returns: The compressed image data (`Data?`), or `nil` if compression fails.
+    public func onlyCompressImage(
+        _ image: UIImage,
+        type: ImageType,
+        targetMB: Double
+    ) async -> Data? {
+        if Task.isCancelled {
+            return nil
+        }
+        switch type {
+        case .jpeg:
+            return compressionJPEGEngine(from: image, mbSize: targetMB)
+        case .png:
+            return compressionPNGEngine(from: image, mbSize: targetMB)
+        }
+    }
+    
+    /// Compress the given image directly without resizing, targeting a specified file size in MB.
+    /// This function keeps the original image dimensions but compresses it to meet the desired size.
+    /// - Parameters:
+    ///   - image: The `UIImage` to compress.
+    ///   - type: The desired image format (`jpeg` or `png`).
+    ///   - targetMB: The maximum allowed file size in megabytes.
+    ///   - completion: The compressed image data (`Data?`), or `nil` if compression fails.
+    public func onlyCompressImage(
+        _ image: UIImage,
+        type: ImageType,
+        targetMB: Double,
+        completion: @Sendable @escaping (Data?) -> Void
+    ) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            
+            let result: Data?
             
             switch type {
             case .jpeg:
-                return compressionJPEGEngine(from: resized, mbSize: targetMB)
+                result = compressionJPEGEngine(from: image, mbSize: targetMB)
             case .png:
-                return compressionPNGEngine(from: resized, mbSize: targetMB)
+                result = compressionPNGEngine(from: image, mbSize: targetMB)
             }
-        }.value
+            
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
     }
 }
 
@@ -103,12 +156,13 @@ extension SwiftImageCompressor {
 
 // MARK: Resize
 extension SwiftImageCompressor {
+    
     /// Resizing Image func
     /// - Parameters:
     ///   - image: UIImage
     ///   - maxDimension: ex) 2048 -> 2048x2048
     /// - Returns: UIImage
-    @available(*, message: "This Function Will Be Deprecated Soon Use downsampling function")
+    @available(*, deprecated, message: "This Function Will Be Deprecated Soon Use downsampling function")
     public func resizeImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
         let width = image.size.width
         let height = image.size.height
@@ -145,7 +199,7 @@ extension SwiftImageCompressor {
     ///   - image: original Image
     ///   - maxDimension: 2048x 2048 -> 2048
     /// - Returns: DownSample Image or Fail To OriginalImage
-    func downSample(_ image: UIImage, maxDimension: CGFloat = 2048) -> UIImage {
+    public func downSample(_ image: UIImage, maxDimension: CGFloat = 2048) -> UIImage {
         guard let data = image.pngData() else {
             print("Image Data Error")
             return image
@@ -172,17 +226,17 @@ extension SwiftImageCompressor {
         
         return UIImage(cgImage: scaledImage)
     }
-
 }
 
 // MARK: Compresse
 extension SwiftImageCompressor {
+    
     /// binary search Image Compress
     /// - Parameters:
     ///   - from: UIImage
     ///   - mbSize: you want mb Size ... ex) 50mb -> 50
     /// - Returns: Data?
-    public func compressionJPEGEngine(from: UIImage, mbSize: Double) -> Data? {
+    private func compressionJPEGEngine(from: UIImage, mbSize: Double) -> Data? {
         var low: CGFloat = 0
         var high: CGFloat = 1
         let minQuality: CGFloat = 0.1
@@ -225,7 +279,7 @@ extension SwiftImageCompressor {
     ///   - from: UIImage
     ///   - mbSize: max mb Size
     /// - Returns: png Data?
-    public func compressionPNGEngine(from: UIImage, mbSize: Double) -> Data? {
+    private func compressionPNGEngine(from: UIImage, mbSize: Double) -> Data? {
         guard let pngData = from.pngData() else {
             return nil
         }
@@ -238,62 +292,7 @@ extension SwiftImageCompressor {
     }
 }
 
-
-extension UIImage {
-    /// Resize and Compress to target MB
-    /// - Parameters:
-    ///   - type: ImageType (jpeg, png)
-    ///   - targetMB: target size in MB
-    ///   - maxDimension: optional max dimension (default: 2048)
-    /// - Returns: Compressed Data?
-    public func reSizeWithCompressImage(
-        type: ImageType,
-        targetMB: Double,
-        maxDimension: CGFloat = 2048
-    ) -> Data? {
-        return SwiftImageCompressor.shared.resizeAndCompress(self, type: type, targetMB: targetMB, maxDimension: maxDimension)
-    }
-    
-    /// Resize and Compress to target MB
-    /// - Parameters:
-    ///   - type: ImageType (jpeg, png)
-    ///   - targetMB: target size in MB
-    ///   - maxDimension: optional max dimension (default: 2048)
-    /// - Returns: Compressed Data?
-    public func reSizeWithCompressImage(
-        type: ImageType,
-        targetMB: Double,
-        maxDimension: CGFloat = 2048
-    ) async -> Data? {
-        return await SwiftImageCompressor.shared.resizeAndCompress(self, type: type, targetMB: targetMB, maxDimension: maxDimension)
-    }
-    
-    /// Resize and Compress to target MB
-    /// - Parameters:
-    ///   - type: ImageType (jpeg, png)
-    ///   - targetMB: target size in MB
-    ///   - maxDimension: optional max dimension (default: 2048)
-    ///   - completion: Compressed Data?
-    public func resizeAndCompress(
-        type: ImageType,
-        targetMB: Double,
-        maxDimension: CGFloat = 2048,
-        completion: @Sendable @escaping (Data?) -> Void
-    ) {
-        SwiftImageCompressor.shared.resizeAndCompress(self, type: type, targetMB: targetMB, maxDimension: maxDimension, completion: completion)
-    }
-    
-    /// Resizing Image func
-    /// - Parameters:
-    ///   - maxDimension: ex) 2048 -> 2048x2048
-    /// - Returns: UIImage
-    public func resizeImage(maxDimension: CGFloat = 2048) -> UIImage {
-        return SwiftImageCompressor.shared.resizeImage(self, maxDimension: maxDimension)
-    }
-    
-}
-
-fileprivate final class TestUIImage: UIImage {
+private final class TestUIImage: UIImage, @unchecked Sendable {
     deinit {
         print("DEAD")
     }

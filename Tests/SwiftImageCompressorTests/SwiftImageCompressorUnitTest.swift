@@ -19,21 +19,20 @@ final class SwiftImageCompressorUnitTest: XCTestCase {
             return
         }
         
-        let resized = SwiftImageCompressor.shared.resizeImage(image, maxDimension: 100)
+        let resized = SwiftImageCompressor.shared.downSample(image, maxDimension: 100)
         
         XCTAssertLessThanOrEqual(resized.size.width, 100)
         XCTAssertLessThanOrEqual(resized.size.height, 100)
     }
     
-    func testJPEGCompressionShouldReturnSmallerData() {
+    func testJPEGCompressionShouldReturnSmallerData() async {
         let makeImage = makeLargeTestImage()
-        guard let image = makeImage.image,
-             let size = makeImage.size else {
+        guard let image = makeImage.image else {
             XCTFail("Test image could not be created.")
             return
         }
-        let want = Double(size) * 0.8
-        let compressed = SwiftImageCompressor.shared.compressionJPEGEngine(from: image, mbSize: want)
+        let want = 2.0
+        let compressed = await SwiftImageCompressor.shared.onlyCompressImage(image, type: .jpeg, targetMB: want)
         
         if let compressed {
             print("\n want -> \(makeMb(want))\n Compressed IMAGE SIZE ----> ", mbText(compressed.count), "\n")
@@ -47,12 +46,11 @@ final class SwiftImageCompressorUnitTest: XCTestCase {
     
     func testResizeAndCompressFlow() async {
         let makeImage = makeLargeTestImage()
-        guard let image = makeImage.image,
-             let size = makeImage.size else {
+        guard let image = makeImage.image else {
             XCTFail("Test image could not be created.")
             return
         }
-        let want = Double(size) * 0.8
+        let want = 2.0
         let compressed = await SwiftImageCompressor.shared.resizeAndCompress(
             image,
             type: .jpeg,
@@ -70,6 +68,7 @@ final class SwiftImageCompressorUnitTest: XCTestCase {
         }
     }
     
+    /// make Image Result -> 2.9mb Image  With Size
     private func makeLargeTestImage() -> (image: UIImage?, size: Int?) {
         let size = CGSize(width: 6000, height: 6000)
         UIGraphicsBeginImageContext(size)
