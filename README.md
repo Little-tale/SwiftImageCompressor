@@ -76,6 +76,19 @@ let data = image.reSizeWithCompressImage(type: .jpeg, targetMB: 2.0)
 let resized = image.resizeImage(maxDimension: 1024)
 ```
 
+### Compress Only
+```swift
+let compressed = await image.onlyCompressImage(image, type: .jpeg, targetMB: want)
+
+    --- or ---
+    
+let compressed = image.onlyCompressImage(image, type: .jpeg, targetMB: want) { data in
+    if let data {
+        print(data)
+    }
+}
+```
+
 # 📌 PNG Support Notes
 > PNG compression is lossless, so **file size cannot be controlled**
 > The library will return nil if the **PNG image** still exceeds the size after **resizing**
